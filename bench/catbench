@@ -1,0 +1,21 @@
+#!/bin/ksh
+# purpose: concatenate specified files (or, if unspecified, all .ksh
+# files in the present directory) after removing shell comments and
+# adding a title
+
+(($# == 0)) && set *.ksh
+
+for i in $*; do
+   dashes="# "
+   li=${#i}
+   for ((j=1;j<=li;j++)); do  dashes+="="; done
+   print -- $dashes
+   print "# $i"
+   print -- $dashes
+   awk ' /^[ ]*$/ {next} {
+         gsub(/(^| +)#.*$/, "", $0)
+         if (length($0) > 0) print
+      }
+   ' $i
+   print ""
+done
