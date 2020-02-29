@@ -154,7 +154,7 @@ function setPenalty { ## shell name
    # working hypothesis: shells sharing the leading `*sh' glob in
    # their name have comparable performance. so we adjust penalty
    # depending on this identifier
-   refshell=${shell/@(*sh)*(*)/\1} 
+   refshell=${shell/@(*sh)*/\1} 
    penalty=${penalties[$refshell]}
    [[ -n $penalty ]] || penalty=${penalties[ksh]}
    export refshell penalty
