@@ -180,6 +180,14 @@ function setup { ## $0
       is provided for convenience.
 
    ]'
+   opstring+=$'[+?Each benchmark file is executed in a subshell process
+      and assumed to contain code that is valid for the considered
+      shell(s) (otherwise encountered syntax or runtime errors are
+      attempted to be handled gracefully). Furthermore, benchmarks are
+      required to run completely silent and to not generate output on
+      either stderr or stdout.
+
+   ]'
    opstring+=$'[+?Absolute run times are reported in seconds using two
       decimal digits. Use \a-r\a to report relative run times when
       comparing different shells.
