@@ -162,7 +162,7 @@ function setPenalty { ## shell name
 
 function setup { ## $0 
    # some defaults
-   fallback="ksh mksh"
+   fallback="bash ksh"
    bdir=./bench
    TIMEFORMAT=$'\nreal\t%2R\nuser\t%2U\nsys\t%2S'
    loop=1
