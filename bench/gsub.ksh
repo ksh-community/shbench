@@ -27,5 +27,9 @@ function gsub { ## len
 }
 typeset -i para=700000
 ((penalty > 0)) || penalty=1
-[[ $refshell == mksh || $refshell == bash ]] && ((penalty *= 50))
+if [[ $refshell == mksh || $refshell == bash ]]; then
+   ((penalty *= 50))
+elif [[ $refshell == "zsh" ]];  then 
+   ((penalty /= 2))
+fi
 gsub $((para/penalty))

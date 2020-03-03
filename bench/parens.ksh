@@ -14,4 +14,7 @@ function parens { ## num
 }
 typeset -i para=40000
 ((penalty > 0)) || penalty=1
+if [[ $refshell == "zsh" ]];  then 
+   ((penalty *= 3))
+fi
 parens $((para/penalty))

@@ -28,4 +28,7 @@ function extglob { ## len
 }
 typeset -i para=3000
 ((penalty > 0)) || penalty=1
+if [[ $refshell == "zsh" ]];  then 
+   ((penalty /= 8))
+fi
 extglob $((para/penalty))

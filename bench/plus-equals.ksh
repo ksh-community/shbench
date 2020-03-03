@@ -10,4 +10,10 @@ function pluseq { ## num > 1
 }
 typeset -i para=200000
 ((penalty > 0)) || penalty=1
+if [[ $refshell == "bash" ]];  then 
+   ((penalty /= 4))
+elif [[ $refshell == "zsh" ]];  then 
+   ((penalty /= 4))
+fi
+
 pluseq $((para/penalty))
