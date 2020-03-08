@@ -33,7 +33,7 @@ time ratios are provided as tabular output. Typical output looks like
       ---------------------------------------------------
 
 This example shows run time ratios derived on an OSX machine (MacBook
-Pro) relative to `/bin/ksh` (the ksh93u+ shipped with OSX).
+Pro) relative to `/bin/ksh` (the ksh93u+ shipped with OSX 10.5.3).
 `kshcommunity` is a binary compiled from the ksh-community maintained
 [repository](https://github.com/ksh-community/ksh) and `ksh2020nms` is
 compiled from
@@ -54,8 +54,10 @@ cloned or downloaded project and issue
 
 **shbench** is maintained using the [Fossil](https://fossil-scm.org)
 distributed version control system. If you are reading this on Github
-you are looking at a Git mirror of the corresponding Fossil repository
-that is hosted [here](http://fossil.0branch.com/csb). Fossil allows to
+you are looking at a
+[Git mirror](https://github.com/ksh-community/shbench.git)
+of the primary Fossil repository
+that is self-hosting [here](http://fossil.0branch.com/csb). Fossil allows to
 automatically push all changes occurring in the Fossil repository **to**
 the Git mirror but will not import changes **from** the mirror. Due to
 this setup, pull requests on Github cannot be accepted. Instead, use
