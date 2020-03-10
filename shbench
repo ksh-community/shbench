@@ -39,15 +39,26 @@ function printBanner { ## name
   print -u$fd -- "*** $name ***"
 }
 
+function timeShell { ## $sh $script
+   typeset -i i
+   typeset sh=$1 script=$2 shop msg
+   [[ $sh == k* ]] && shop=-e || shop=''
+   for ((i = 1; i <= loop; i++)); do
+      msg+=$({ time $sh $shop "$script"; } 2>&1)
+      (($? == 0)) || { print "$msg"; return 1; }
+   done
+   print $msg
+}
+
 function runit {  ## script
    compound res
    typeset -A cpu
-   typeset str shop script="$@"
+   typeset script="$@"
 
    for sh in $shells; do
+     typeset msg times
      res.shell=$sh
-     typeset str="# $sh"
-     print -u$fd -n $str
+     print -u$fd -n "# $sh"
      msg=$($sh -n "$script" 2>&1) || {  # this isn't a foolproof check!
        print -u$fd ": $msg[1G!"
        res.pass=**skip**
@@ -55,24 +66,15 @@ function runit {  ## script
        print $res " "
        continue
      }
-     [[ $sh == k* ]] && shop=-e || shop=''
-     function runShell { ## $sh,$shop,$script
-        typeset -i i
-        typeset sh=$1 shop=$2 script=$3
-        for ((i = 1; i <= $loop; i++)); do
-           $sh $shop "$script"
-        done
-     }
-     str=$({ time runShell $sh $shop $script; } 2>&1)
-     #str=$({ time $sh $shop "$script"; } 2>&1)
+     times=$(timeShell $sh $script)
      if (($? != 0)); then
-       print -u$fd "[1G! $sh: ${str%%$'\n'*}"   ## hopefully the error message but `time' output stripped
+       print -u$fd "[1G! $sh: ${times%%$'\n'*}"   ## hopefully the error message but `time' output stripped
        res.pass=**fail**
        set -A cpu "real NA user NA sys NA"
      else
        print -u$fd ""
        res.pass=ok
-       set -A cpu $str
+       set -A cpu $times
      fi
      res.time=${cpu[*]}
      print $res " "
@@ -98,12 +100,38 @@ function runScripts { ## $flist
    typeset IFS=$'\n'
    for name in ${!bm[*]}; do
      unset IFS
-     report+="${name// /$'\034'} "
+     typeset fs=$'\034'
+     report+="${name// /$fs} "   # see `mktable' for this replacement
      repline=''
      for i in "${!bm[$name][@]}"; do
        set -A times ${bm[$name][i].time}
        pass=${bm[$name][i].pass}
-       [[ $pass == "ok" ]] && add=${times[1]} || add=$pass
+       if [[ $pass == "ok" ]]; then
+          if ((loop > 1)); then
+             # determine mean run time and [min, max] range
+             typeset mintime maxtime timeval avgtime=0 trange
+             integer idx=0 period=6  # period=6 since "real time user time sys time" ...
+             ((mintime = times[1]))
+             ((maxtime = times[1]))
+             for ((i = 1; i <= loop; i++)); do
+                ((idx = (i - 1) * period + 1))
+                ((timeval = times[idx]))
+                ((avgtime += timeval))
+                ((mintime = timeval < mintime ? timeval:mintime))
+                ((maxtime = timeval > maxtime ? timeval:maxtime))
+             done
+             ((avgtime /= loop))
+             avgtime=$(print -f %.3f $avgtime)
+             mintime=$(print -f %.2f $mintime)
+             maxtime=$(print -f %.2f $maxtime)
+             add=${avgtime}
+             ((useRatios == 0)) && add+="${fs}[$mintime-$maxtime]"
+          else
+             add=${times[1]}
+          fi
+       else
+          add=$pass
+       fi
        repline+="$add "
      done
      if ((useRatios == 1)); then
@@ -118,7 +146,7 @@ function runScripts { ## $flist
            elif [[ $refrat == *[[:alpha:]]* ]]; then
               ratios[i]=NA
            else
-              ratios[i]=$(printf '%.2f' $((val/$refrat)))
+              ratios[i]=$(printf '%.3f' $((val/$refrat)))
            fi
         done
         repline=${ratios[@]}
@@ -145,6 +173,9 @@ function mkruler { ## table
 }
 
 function mktable {  ## report
+   # NOTE TO SELF: the ASCII `fs' character (\034) is used in `report'
+   # as a place holder for blanks and replaced accordingly after
+   # tabular formatting with `rs'.
    typeset report="$*"
    typeset header
    set -A header name $shells
@@ -179,6 +210,12 @@ function setup { ## $0
    # some defaults
    fallback="bash ksh"
    bdir=./bench
+   # NOTE TO SELF: it seems the `time' builtin reports at most with 10
+   # ms accuracy (2 decimal digits). increasing the number of digits
+   # in TIMEFORMAT does not help: the third digit is always set to
+   # zero. also, it seems 3 digits are the maximum number of printed
+   # digits and larger settings are not honoured at all. might need
+   # clarification.
    TIMEFORMAT=$'\nreal\t%2R\nuser\t%2U\nsys\t%2S'
    loop=1
 
@@ -204,7 +241,8 @@ function setup { ## $0
 
    ]'
    opstring+=$'[+?Absolute run times are reported in seconds using two
-      decimal digits. Use \a-r\a to report relative run times when
+      decimal digits (3 digits if benchmarks are run more than once
+      using \a-l\a). Use \a-r\a to report relative run times when
       comparing different shells.
       
    ]'
@@ -213,13 +251,15 @@ function setup { ## $0
       **skip**. Benchmarks failing to complete successfully are flagged
       as **fail**. If \a-r\a is used and the reference shell skips (or
       fails for) a benchmark so that a ratio cannot be computed for
-      another (not failing) shell, the respective entry is set to "NA".
+      another (not failing) shell, the respective entry is set to NA.
 
    ]'
    opstring+=$'[+?The \a-l\a option allows to set a repeat count for
-      benchmark execution. This might help to increase timing
-      reliability. So far only the cumulative time of all repeated runs
-      is reported. No analysis of variability across runs is provided.
+      benchmark execution. This helps to increase timing reliability
+      and allows to assess run time variability. If the repeat count
+      is > 1, run times are reported as "avg [min-max]]". If \a-r\a
+      is also specified, run time ratios based on the average run
+      times are reported (but no ratio ranges are provided so far).
 
    ]'
    opstring+=$'[+TECHNICAL DETAILS?Actual run time of a given benchmark
@@ -251,15 +291,16 @@ function setup { ## $0
    ]'
    opstring+=$'[+?Regarding reliability of the timing information,
       the usual caveats apply. Ensure that the used machine is not too
-      busy otherwise. Rerun several times to assess how reproducible
-      the measurements are. Very short run times are inherently less
-      reliable than longer ones (larger fractional uncertainty). This
-      situation can be only partly improved by using \a-l\a with an
-      increased loop count since a) the times are currently stored with
-      only 10 ms accuracy and b) the startup time of the subshell is of
-      about the same magnitude (which biases the measurement). Take
-      home message: don\'t take run times below about 0.1-0.2 seconds
-      per loop too serious.
+      busy otherwise. Run benchmarks several times using \a-l\a to
+      assess how reproducible the measurements are. Short run times are
+      inherently less reliable than longer ones (i.e. exhibit larger
+      fractional uncertainty). This situation can be only partly
+      improved by using \a-l\a with an increased loop count since run
+      times are available with only 10 ms accuracy. Furthermore, for
+      very short run times the startup time of the subshell (which is of
+      the order of 10 ms) becomes non-negligible. Take home message:
+      don\'t take average run times below about 0.1-0.2 seconds too
+      serious.
 
    ]'
    opstring+="[b:bm?Select benchmarks to run.]:[flist]"
