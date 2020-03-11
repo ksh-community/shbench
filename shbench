@@ -18,8 +18,8 @@
 # ---------------------------------------------------------------------
 function allgood {
    [[ $KSH_VERSION == Version\ A* ]] || {
-     print -u2 "sorry, this script requires ksh93 to run."
-     return 1
+      print -u2 "sorry, this script requires ksh93 to run."
+      return 1
    }
 
    # ensure that the targeted shells are present
@@ -44,8 +44,8 @@ function allgood {
 }
 
 function printBanner { ## name
-  typeset name=$1
-  print -u$fd -- "*** $name ***"
+   typeset name=$1
+   print -u$fd -- "*** $name ***"
 }
 
 function timeShell { ## $sh $script
@@ -65,28 +65,28 @@ function runit {  ## script
    typeset script="$@"
 
    for sh in $shells; do
-     typeset msg times
-     res.shell=$sh
-     print -u$fd -n "# $sh"
-     msg=$($sh -n "$script" 2>&1) || {  # this isn't a foolproof check!
-       print -u$fd ": $msg[1G!"
-       res.pass=**skip**
-       res.time="real NA user NA sys NA"
-       print $res " "
-       continue
-     }
-     times=$(timeShell $sh $script)
-     if (($? != 0)); then
-       print -u$fd "[1G! $sh: ${times%%$'\n'*}"   ## hopefully the error message but `time' output stripped
-       res.pass=**fail**
-       set -A cpu "real NA user NA sys NA"
-     else
-       print -u$fd ""
-       res.pass=ok
-       set -A cpu $times
-     fi
-     res.time=${cpu[*]}
-     print $res " "
+      typeset msg times
+      res.shell=$sh
+      print -u$fd -n "# $sh"
+      msg=$($sh -n "$script" 2>&1) || {  # this isn't a foolproof check!
+         print -u$fd ": $msg[1G!"
+         res.pass=**skip**
+         res.time="real NA user NA sys NA"
+         print $res " "
+         continue
+      }
+      times=$(timeShell $sh $script)
+      if (($? != 0)); then
+         print -u$fd "[1G! $sh: ${times%%$'\n'*}"   ## hopefully the error message but `time' output stripped
+         res.pass=**fail**
+         set -A cpu "real NA user NA sys NA"
+      else
+         print -u$fd ""
+         res.pass=ok
+         set -A cpu $times
+      fi
+      res.time=${cpu[*]}
+      print $res " "
    done
 }
 
@@ -97,78 +97,78 @@ function runScripts { ## $flist
    typeset add repline report i
    print -u2 "\nbenchmarking ${shells// /, } ..."
    for script in $scripts; do
-     name=${script##*/}
-     printBanner "$name"
-     # explanation: the next line puts the set of compound variables
-     # (each containing the results of this benchmark for one of the
-     # considered shells) as an indexed array into one element of the
-     # associative array `bm'. so `bm' is an (associative) array
-     # of (indexed) arrays of compound variables.
-     eval "bm[$name]=($(runit $script))"
+      name=${script##*/}
+      printBanner "$name"
+      # explanation: the next line puts the set of compound variables
+      # (each containing the results of this benchmark for one of the
+      # considered shells) as an indexed array into one element of the
+      # associative array `bm'. so `bm' is an (associative) array
+      # of (indexed) arrays of compound variables.
+      eval "bm[$name]=($(runit $script))"
    done
    typeset IFS=$'\n'
    for name in ${!bm[*]}; do
-     unset IFS
-     typeset fs=$'\034'
-     report+="${name// /$fs} "   # see `mktable' for this replacement
-     repline=''
-     for i in "${!bm[$name][@]}"; do
-       set -A times ${bm[$name][i].time}
-       pass=${bm[$name][i].pass}
-       if [[ $pass == "ok" ]]; then
-          if ((loop > 1)); then
-             # determine mean run time and [min, max] range
-             typeset mintime maxtime timeval avgtime=0 trange
-             integer idx=0 period=6  # period=6 since "real time user time sys time" ...
-             ((mintime = times[1]))
-             ((maxtime = times[1]))
-             for ((i = 1; i <= loop; i++)); do
-                ((idx = (i - 1) * period + 1))
-                ((timeval = times[idx]))
-                ((avgtime += timeval))
-                ((mintime = timeval < mintime ? timeval:mintime))
-                ((maxtime = timeval > maxtime ? timeval:maxtime))
-             done
-             ((avgtime /= loop))
-             avgtime=$(print -f %.3f $avgtime)
-             mintime=$(print -f %.2f $mintime)
-             maxtime=$(print -f %.2f $maxtime)
-             add=${avgtime}
-             ((useRatios == 0)) && add+="${fs}[$mintime-$maxtime]"
-          else
-             add=${times[1]}
-          fi
-       else
-          add=$pass
-       fi
-       repline+="$add "
-     done
-     # NOTE TO SELF: trimming the trailing blanks in each line is
-     # relevant due to discrepant behaviour of linux `rs' compared to
-     # BSD `rs': the latter ignores trailing space (good), the former
-     # creates an additional spurious empty record (output line) which
-     # messes up `mktable' output.
-     repline=${repline% }
+      unset IFS
+      typeset fs=$'\034'
+      report+="${name// /$fs} "   # see `mktable' for this replacement
+      repline=''
+      for i in "${!bm[$name][@]}"; do
+         set -A times ${bm[$name][i].time}
+         pass=${bm[$name][i].pass}
+         if [[ $pass == "ok" ]]; then
+            if ((loop > 1)); then
+               # determine mean run time and [min, max] range
+               typeset mintime maxtime timeval avgtime=0 trange
+               integer idx=0 period=6  # period=6 since "real time user time sys time" ...
+               ((mintime = times[1]))
+               ((maxtime = times[1]))
+               for ((i = 1; i <= loop; i++)); do
+                  ((idx = (i - 1) * period + 1))
+                  ((timeval = times[idx]))
+                  ((avgtime += timeval))
+                  ((mintime = timeval < mintime ? timeval:mintime))
+                  ((maxtime = timeval > maxtime ? timeval:maxtime))
+               done
+               ((avgtime /= loop))
+               avgtime=$(print -f %.3f $avgtime)
+               mintime=$(print -f %.2f $mintime)
+               maxtime=$(print -f %.2f $maxtime)
+               add=${avgtime}
+               ((useRatios == 0)) && add+="${fs}[$mintime-$maxtime]"
+            else
+               add=${times[1]}
+            fi
+         else
+            add=$pass
+         fi
+         repline+="$add "
+      done
+      # NOTE TO SELF: trimming the trailing blanks in each line is
+      # relevant due to discrepant behaviour of linux `rs' compared to
+      # BSD `rs': the latter ignores trailing space (good), the former
+      # creates an additional spurious empty record (output line) which
+      # messes up `mktable' output.
+      repline=${repline% }
 
-     if ((useRatios == 1)); then
-        typeset -a ratios
-        set -A ratios $repline
-        typeset refrat=${ratios[0]}
-        typeset val
-        for i in ${!ratios[@]}; do
-           val=${ratios[i]}
-           if [[ $val == *[[:alpha:]]* ]]; then
-              continue
-           elif [[ $refrat == *[[:alpha:]]* ]]; then
-              ratios[i]=NA
-           else
-              ratios[i]=$(printf '%.3f' $((val/$refrat)))
-           fi
-        done
-        repline=${ratios[@]}
-     fi
-     report+=$repline
-     report+=$'\n'
+      if ((useRatios == 1)); then
+         typeset -a ratios
+         set -A ratios $repline
+         typeset refrat=${ratios[0]}
+         typeset val
+         for i in ${!ratios[@]}; do
+            val=${ratios[i]}
+            if [[ $val == *[[:alpha:]]* ]]; then
+               continue
+            elif [[ $refrat == *[[:alpha:]]* ]]; then
+               ratios[i]=NA
+            else
+               ratios[i]=$(printf '%.3f' $((val/$refrat)))
+            fi
+         done
+         repline=${ratios[@]}
+      fi
+      report+=$repline
+      report+=$'\n'
    done
    print "$report"
 }
@@ -330,7 +330,7 @@ function setup { ## $0
 # note: we boldly assume adherence to a no-blanks-in-file-names
 # policy at a few points...
 
-typeset fallback bdir opstring opt flist name useRatios report quite fd=2
+typeset fallback bdir opstring opt flist useRatios report quite fd=2
 integer loop=1
 typeset -a shells
 
