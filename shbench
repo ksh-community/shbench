@@ -28,6 +28,15 @@ function allgood {
       $sh -c : || { print -u2 "please install this shell and retry (or exclude it from benchmarking)"; return 1; }
    done
 
+   # check whether all benchmark files are readable
+   typeset name
+   for name in $flist; do
+      [[ -r $name ]] || {
+         print -u2 "benchmark '$name' non-existent or not readable. please retry with other benchmarks."
+         return 1
+      }
+   done
+
    # also do a few tests for not necessarily available tools used here
    # and/or in the benchmark files.
    jot 1 >/dev/null            || { print -u2 please install it and retry; return 1; }
@@ -167,7 +176,7 @@ function runScripts { ## $flist
 function mkruler { ## table
    nameref table=$1
    typeset ruler lines
-   typeset -i mxlen=0 slen=0 
+   typeset -i mxlen=0 slen=0
    typeset IFS=$'\n'
    set -A lines $table
    for i in ${lines[*]}; do
@@ -207,13 +216,13 @@ function setPenalty { ## shell name
    # working hypothesis: shells sharing the leading `*sh' glob in
    # their name have comparable performance. so we adjust penalty
    # depending on this identifier
-   refshell=${shell/@(*sh)*/\1} 
+   refshell=${shell/@(*sh)*/\1}
    penalty=${penalties[$refshell]}
    [[ -n $penalty ]] || penalty=${penalties[ksh]}
    export refshell penalty
 }
 
-function setup { ## $0 
+function setup { ## $0
    # some defaults
    fallback="bash ksh"
    bdir=./bench
@@ -224,7 +233,6 @@ function setup { ## $0
    # digits and larger settings are not honoured at all. might need
    # clarification.
    TIMEFORMAT=$'\nreal\t%2R\nuser\t%2U\nsys\t%2S'
-   loop=1
 
    opstring+="[+NAME?${1##*/}]"
    opstring+=$'[+DESCRIPTION?Benchmarking shells.]'
@@ -251,7 +259,7 @@ function setup { ## $0
       decimal digits (3 digits if benchmarks are run more than once
       using \a-l\a). Use \a-r\a to report relative run times when
       comparing different shells.
-      
+
    ]'
    opstring+=$'[+?Results table: benchmarks which do not pass a syntax
       check for the considered shell are skipped and flagged as
@@ -320,9 +328,10 @@ function setup { ## $0
 }
 # ---------------------------------------------------------------------------
 # note: we boldly assume adherence to a no-blanks-in-file-names
-# policy at a few points... 
+# policy at a few points...
 
-typeset fallback bdir opstring opt flist useRatios report quite fd=2
+typeset fallback bdir opstring opt flist name useRatios report quite fd=2
+integer loop=1
 typeset -a shells
 
 setup $0
@@ -331,7 +340,7 @@ while getopts "$opstring" opt; do
    case $opt in
       b) flist=$OPTARG;;
       d) bdir=$OPTARG;;
-      l) loop=$OPTARG;;
+      l) ((loop = OPTARG > 1? OPTARG:1));;
       q) fd=3
          eval "redirect $fd> /dev/null"
       ;;
@@ -341,8 +350,8 @@ done
 shift $((OPTIND - 1))
 
 (($# == 0)) && set $fallback
-flist=${flist:-$bdir/*.ksh}
 shells=${*:-$fallback}
+flist=${flist:-$bdir/*.ksh}
 setPenalty $1
 
 allgood || exit 1
