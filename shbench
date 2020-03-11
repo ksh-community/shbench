@@ -134,6 +134,13 @@ function runScripts { ## $flist
        fi
        repline+="$add "
      done
+     # NOTE TO SELF: trimming the trailing blanks in each line is
+     # relevant due to discrepant behaviour of linux `rs' compared to
+     # BSD `rs': the latter ignores trailing space (good), the former
+     # creates an additional spurious empty record (output line) which
+     # messes up `mktable' output.
+     repline=${repline% }
+
      if ((useRatios == 1)); then
         typeset -a ratios
         set -A ratios $repline
