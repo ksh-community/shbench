@@ -120,8 +120,8 @@ function runAll { ## $benchmarks
          if [[ $pass == "ok" ]]; then
             if ((loop > 1)); then
                # determine mean run time and [min, max] range
-               float mintime maxtime timeval trange avgtime=0
-               typeset smin smax savg
+               float mintime maxtime timeval sdev avgtime=0 sum2=0
+               typeset smin smax savg ssdv
                integer idx period=6  # period=6 since "real time user time sys time" ...
                ((mintime = times[1]))
                ((maxtime = times[1]))
@@ -129,15 +129,20 @@ function runAll { ## $benchmarks
                   ((idx = (i - 1) * period + pos))
                   ((timeval = times[idx]))
                   ((avgtime += timeval))
+                  ((sum2 += timeval*timeval))
                   ((mintime = timeval < mintime ? timeval:mintime))
                   ((maxtime = timeval > maxtime ? timeval:maxtime))
                done
                ((avgtime /= loop))
+               (( sdev = sqrt((sum2 - loop * avgtime * avgtime)/(loop - 1)) ))
                smin=$(print -f %#.2f $mintime)
                smax=$(print -f %#.2f $maxtime)
                savg=$(print -f %#.3f $avgtime)
+               ssdv=$(print -f %#.3f $sdev)
                add=$savg
-               ((useRatios == 0)) && add+="${fs}[$smin-$smax]"
+               if ((useRatios == 0)); then
+                  ((sdShow)) && add+="${fs}+/-${fs}$ssdv" || add+="${fs}[$smin-$smax]"
+               fi
             else
                add=${times[pos]}
             fi
@@ -274,10 +279,11 @@ function setup { ## $0
    ]'
    opstring+=$'[+?The \a-l\a option allows to set a repeat count for
       benchmark execution. This helps to increase timing reliability
-      and allows to assess run time variability. If the repeat count
-      is > 1, run times are reported as "avg [min-max]]". If \a-r\a
-      is also specified, run time ratios based on the average run
-      times are reported (but no ratio ranges are provided so far).
+      and allows to assess run time variability. If the repeat count is
+      > 1, run times are reported as "avg [min-max]]" or, with \a-s\a,
+      as "avg +/- sd". If \a-r\a is also specified, run time ratios
+      based on the average run times are reported (but ratio variability
+      is not provided so far).
 
    ]'
    opstring+=$'[+TECHNICAL DETAILS?Actual run time of a given benchmark
@@ -326,6 +332,7 @@ function setup { ## $0
    opstring+="[l:loop?Run each benchmark so many times.]#[loop:=$loop]"
    opstring+="[q:quite?Suppress progess report and associated error messages.]"
    opstring+="[r:ratio?Report timing as ratios relative to first specified shell.]"
+   opstring+="[s:sd?Report variability as standard deviation rather than min-max range.]"
 
    opstring+=$'\n\n [shell(s) ...]'
 }
@@ -333,8 +340,8 @@ function setup { ## $0
 # note: we boldly assume adherence to a no-blanks-in-file-names
 # policy at a few points...
 
-typeset fallback bdir opstring opt benchmarks useRatios report quite fd=2
-integer loop=1
+typeset fallback bdir opstring opt benchmarks report quite fd=2
+integer loop=1 useRatios=0 sdShow=0
 typeset -a shells
 
 setup $0
@@ -348,6 +355,7 @@ while getopts "$opstring" opt; do
          eval "redirect $fd> /dev/null"
       ;;
       r) useRatios=1;;
+      s) sdShow=1;;
    esac
 done
 shift $((OPTIND - 1))
