@@ -30,7 +30,7 @@ function allgood {
 
    # check whether all benchmark files are readable
    typeset name
-   for name in $flist; do
+   for name in $benchmarks; do
       [[ -r $name ]] || {
          print -u2 "benchmark '$name' non-existent or not readable. please retry with other benchmarks."
          return 1
@@ -59,7 +59,7 @@ function timeShell { ## $sh $script
    print $msg
 }
 
-function runit {  ## script
+function runThis {  ## script
    compound res
    typeset -A cpu
    typeset script="$@"
@@ -90,21 +90,22 @@ function runit {  ## script
    done
 }
 
-function runScripts { ## $flist
+function runAll { ## $benchmarks
+   typeset benchmarks=$*
    typeset -a times
    typeset -A bm
-   typeset scripts=$* name dir script pass
+   typeset name dir benchmark pass
    typeset add repline report i
    print -u2 "\nbenchmarking ${shells// /, } ..."
-   for script in $scripts; do
-      name=${script##*/}
+   for benchmark in $benchmarks; do
+      name=${benchmark##*/}
       printBanner "$name"
       # explanation: the next line puts the set of compound variables
       # (each containing the results of this benchmark for one of the
       # considered shells) as an indexed array into one element of the
       # associative array `bm'. so `bm' is an (associative) array
       # of (indexed) arrays of compound variables.
-      eval "bm[$name]=($(runit $script))"
+      eval "bm[$name]=($(runThis $benchmark))"
    done
    typeset IFS=$'\n'
    for name in ${!bm[*]}; do
@@ -318,7 +319,7 @@ function setup { ## $0
       serious.
 
    ]'
-   opstring+="[b:bm?Select benchmarks to run.]:[flist]"
+   opstring+="[b:bm?Select benchmarks to run.]:[benchmarks]"
    opstring+="[d:dir?Location of the benchmark files.]:[bdir:=$bdir]"
    opstring+="[l:loop?Run each benchmark so many times.]#[loop:=$loop]"
    opstring+="[q:quite?Suppress progess report and associated error messages.]"
@@ -330,7 +331,7 @@ function setup { ## $0
 # note: we boldly assume adherence to a no-blanks-in-file-names
 # policy at a few points...
 
-typeset fallback bdir opstring opt flist useRatios report quite fd=2
+typeset fallback bdir opstring opt benchmarks useRatios report quite fd=2
 integer loop=1
 typeset -a shells
 
@@ -338,7 +339,7 @@ setup $0
 
 while getopts "$opstring" opt; do
    case $opt in
-      b) flist=$OPTARG;;
+      b) benchmarks=$OPTARG;;
       d) bdir=$OPTARG;;
       l) ((loop = OPTARG > 1? OPTARG:1));;
       q) fd=3
@@ -351,9 +352,9 @@ shift $((OPTIND - 1))
 
 (($# == 0)) && set $fallback
 shells=${*:-$fallback}
-flist=${flist:-$bdir/*.ksh}
+benchmarks=${benchmarks:-$bdir/*.ksh}
 setPenalty $1
 
 allgood || exit 1
-report=$(runScripts $flist)
+report=$(runAll $benchmarks)
 mktable "$report"
