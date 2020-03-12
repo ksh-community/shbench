@@ -95,7 +95,7 @@ function runAll { ## $benchmarks
    typeset -a times
    typeset -A bm
    typeset name dir benchmark pass
-   typeset add repline report i
+   typeset add repline report
    print -u2 "\nbenchmarking ${shells// /, } ..."
    for benchmark in $benchmarks; do
       name=${benchmark##*/}
@@ -108,6 +108,7 @@ function runAll { ## $benchmarks
       eval "bm[$name]=($(runThis $benchmark))"
    done
    typeset IFS=$'\n'
+   integer pos=1
    for name in ${!bm[*]}; do
       unset IFS
       typeset fs=$'\034'
@@ -119,25 +120,26 @@ function runAll { ## $benchmarks
          if [[ $pass == "ok" ]]; then
             if ((loop > 1)); then
                # determine mean run time and [min, max] range
-               typeset mintime maxtime timeval avgtime=0 trange
-               integer idx=0 period=6  # period=6 since "real time user time sys time" ...
+               float mintime maxtime timeval trange avgtime=0
+               typeset smin smax savg
+               integer idx period=6  # period=6 since "real time user time sys time" ...
                ((mintime = times[1]))
                ((maxtime = times[1]))
                for ((i = 1; i <= loop; i++)); do
-                  ((idx = (i - 1) * period + 1))
+                  ((idx = (i - 1) * period + pos))
                   ((timeval = times[idx]))
                   ((avgtime += timeval))
                   ((mintime = timeval < mintime ? timeval:mintime))
                   ((maxtime = timeval > maxtime ? timeval:maxtime))
                done
                ((avgtime /= loop))
-               avgtime=$(print -f %.3f $avgtime)
-               mintime=$(print -f %.2f $mintime)
-               maxtime=$(print -f %.2f $maxtime)
-               add=${avgtime}
-               ((useRatios == 0)) && add+="${fs}[$mintime-$maxtime]"
+               smin=$(print -f %#.2f $mintime)
+               smax=$(print -f %#.2f $maxtime)
+               savg=$(print -f %#.3f $avgtime)
+               add=$savg
+               ((useRatios == 0)) && add+="${fs}[$smin-$smax]"
             else
-               add=${times[1]}
+               add=${times[pos]}
             fi
          else
             add=$pass
@@ -191,7 +193,7 @@ function mkruler { ## table
 
 function mktable {  ## report
    # NOTE TO SELF: the ASCII `fs' character (\034) is used in `report'
-   # as a place holder for blanks and replaced accordingly after
+   # as a placeholder for blanks and replaced accordingly after
    # tabular formatting with `rs'.
    typeset report="$*"
    typeset header
@@ -242,18 +244,18 @@ function setup { ## $0
       ('${fallback// /, }').
    ]'
    opstring+=$'[+?Benchmarks can be selected via \a-b\a and have to be
-      valid relative or absolute pathnames (remember to double quote the
-      argument if multiple files are specified, e.g. when using
-      wildcards). \a-d path\a is equivalent to \a-b "path/*.ksh"\a and
-      is provided for convenience.
+      valid relative or absolute pathnames (assumed to not contain any
+      white space). Remember to double quote the argument if multiple
+      files are specified (when wildcards are used, it suffices to quote
+      these). \a-d path\a is equivalent to \a-b "path/*.ksh"\a and is
+      provided for convenience.
 
    ]'
    opstring+=$'[+?Each benchmark file is executed in a subshell process
       and assumed to contain code that is valid for the considered
-      shell(s) (otherwise encountered syntax or runtime errors are
-      attempted to be handled gracefully). Furthermore, benchmarks are
-      required to run completely silent and to not generate output on
-      either stderr or stdout.
+      shell(s). Syntax or runtime errors are hopefully handled
+      gracefully. Otherwise, benchmarks are required to run completely
+      silent and to not generate output on either stderr or stdout.
 
    ]'
    opstring+=$'[+?Absolute run times are reported in seconds using two
