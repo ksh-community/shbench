@@ -45,7 +45,7 @@ function sieve { ## n>=2 report(0/1)
       ((buf[i] == 1)) && ((primes[j++] = i))
    done
    if ((report)); then
-      print "${primes[@]} ($j primes)"
+      echo "${primes[@]} ($j primes)"
    fi
 
    # (partial) assertion. since mksh seemingly cannot do array
