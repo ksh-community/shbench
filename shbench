@@ -143,16 +143,16 @@ function runAll { ## $benchmarks
                done
                ((avgtime /= loop))
                (( sdev = sqrt((sum2 - loop * avgtime * avgtime)/(loop - 1)) ))
-               smin=$(print -f %#.${prec}f $mintime)
-               smax=$(print -f %#.${prec}f $maxtime)
-               savg=$(print -f %#.${prec}f $avgtime)
-               ssdv=$(print -f %#.2g $sdev)
+               smin=$(print -f "%#.${prec}f" $mintime)
+               smax=$(print -f "%#.${prec}f" $maxtime)
+               savg=$(print -f "%#.${prec}f" $avgtime)
+               ssdv=$(print -f "%#.2g" $sdev)
                add=$savg
                if ((useRatios == 0)); then
                   ((sdShow)) && add+="${fs}+/-${fs}$ssdv" || add+="${fs}[$smin-$smax]"
                fi
             else
-               add=$(print -f %#.${prec}f times[pos])
+               add=$(print -f "%#.${prec}f" times[pos])
             fi
          else
             add=$pass
@@ -178,7 +178,7 @@ function runAll { ## $benchmarks
             elif [[ $refrat == *[[:alpha:]]* ]]; then
                ratios[i]=NA
             else
-               ratios[i]=$(printf '%.3f' $((val/$refrat)))
+               ratios[i]=$(printf "%.#${prec}f" $((val/$refrat)))
             fi
          done
          repline=${ratios[@]}
