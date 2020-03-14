@@ -50,13 +50,21 @@ function printBanner { ## name
 
 function timeShell { ## $sh $script
    typeset -i i
-   typeset sh=$1 script=$2 shop msg
+   typeset -f tics
+   typeset sh=$1 script=$2 shop msgbuf msg
+   typeset ts=$'\t' nl=$'\n'
    [[ $sh == k* ]] && shop=-e || shop=''
    for ((i = 1; i <= loop; i++)); do
-      msg+=$({ time $sh $shop "$script"; } 2>&1)
-      (($? == 0)) || { print "$msg"; return 1; }
+      tics=$SECONDS
+      msg=$({ time $sh $shop "$script"; } 2>&1)
+      (($? == 0)) && tics=$((SECONDS - tics)) || { print "$msg"; return 1; }
+      # we switch from `time' to `SECONDS' for runtime measurements
+      # depending on the value of `prec' due to the current two
+      # decimal digits limitation of `time'. we also emulate the
+      # format as defined by our choice of TIMEFORMAT.
+      ((prec < 3)) && msgbuf+=$msg || msgbuf+="${nl}real${ts}${tics}${ts}user${ts}NA${ts}sys${ts}NA"
    done
-   print $msg
+   print $msgbuf
 }
 
 function runThis {  ## script
@@ -119,7 +127,7 @@ function runAll { ## $benchmarks
          pass=${bm[$name][i].pass}
          if [[ $pass == "ok" ]]; then
             if ((loop > 1)); then
-               # determine mean run time and [min, max] range
+               # determine mean runtime and [min, max] range
                float mintime maxtime timeval sdev avgtime=0 sum2=0
                typeset smin smax savg ssdv
                integer idx period=6  # period=6 since "real time user time sys time" ...
@@ -135,15 +143,22 @@ function runAll { ## $benchmarks
                done
                ((avgtime /= loop))
                (( sdev = sqrt((sum2 - loop * avgtime * avgtime)/(loop - 1)) ))
-               smin=$(print -f %#.2f $mintime)
-               smax=$(print -f %#.2f $maxtime)
-               savg=$(print -f %#.3f $avgtime)
-               ssdv=$(print -f %#.3f $sdev)
+               smin=$(print -f %#.${prec}f $mintime)
+               smax=$(print -f %#.${prec}f $maxtime)
+               savg=$(print -f %#.${prec}f $avgtime)
+               ssdv=$(print -f %#.2g $sdev)
                add=$savg
                if ((useRatios == 0)); then
                   ((sdShow)) && add+="${fs}+/-${fs}$ssdv" || add+="${fs}[$smin-$smax]"
                fi
             else
+               # NOTE TO SELF: here, format is controlled by TIMEFORMAT,
+               # rather than `prec'. this is consistent only because
+               # min(prec) equals 2 which is the number of digits used
+               # in TIMEFORMAT. once the `time' builtin is fixed to
+               # really display 3 decimal digits the different
+               # handling of p=2 vs. p>2 might be reverted (see
+               # `timeShell').
                add=${times[pos]}
             fi
          else
@@ -205,9 +220,9 @@ function mktable {  ## report
    set -A header name $shells
    typeset -i ncols=${#header[@]}
    typeset table=$(print "name $shells $report" | rs -z 0 $ncols | tr '\034' '\040')
-   typeset ruler=$(mkruler table) lf=$'\n'
-   table=${table/+([!$lf]$lf)/\1$ruler$lf}
-   print "$lf$ruler"
+   typeset ruler=$(mkruler table) nl=$'\n'
+   table=${table/+([!$nl]$nl)/\1$ruler$nl}
+   print "$nl$ruler"
    print "$table"
    print $ruler
 }
@@ -236,11 +251,10 @@ function setup { ## $0
    bdir=./bench
    # NOTE TO SELF: it seems the `time' builtin reports at most with 10
    # ms accuracy (2 decimal digits). increasing the number of digits
-   # in TIMEFORMAT does not help: the third digit is always set to
-   # zero. also, it seems 3 digits are the maximum number of printed
-   # digits and larger settings are not honoured at all. might need
-   # clarification.
-   TIMEFORMAT=$'\nreal\t%2R\nuser\t%2U\nsys\t%2S'
+   # in TIMEFORMAT to 3 does not help: the third digit is always set to
+   # zero (more digits are not allowed by TIMEFORMAT anyway). looks
+   # like a bug to me... 
+   TIMEFORMAT=$'\nreal\t%2R\tuser\t%2U\tsys\t%2S'
 
    opstring+="[+NAME?${1##*/}]"
    opstring+=$'[+DESCRIPTION?Benchmarking shells.]'
@@ -263,10 +277,13 @@ function setup { ## $0
       silent and to not generate output on either stderr or stdout.
 
    ]'
-   opstring+=$'[+?Absolute run times are reported in seconds using two
-      decimal digits (3 digits if benchmarks are run more than once
-      using \a-l\a). Use \a-r\a to report relative run times when
-      comparing different shells.
+   opstring+=$'[+?The "real" runtime of each benchmark is reported in
+      seconds (which can usually be expected to essentially equal the
+      sum of user and system time). The number of decimal digits is
+      controlled by \a-p\a (default: '$prec', minimum: 2). Standard
+      deviations are always reported with 2 significant digits. Use
+      \a-r\a to report relative runtimes when comparing different
+      shells.
 
    ]'
    opstring+=$'[+?Results table: benchmarks which do not pass a syntax
@@ -279,35 +296,35 @@ function setup { ## $0
    ]'
    opstring+=$'[+?The \a-l\a option allows to set a repeat count for
       benchmark execution. This helps to increase timing reliability
-      and allows to assess run time variability. If the repeat count is
-      > 1, run times are reported as "avg [min-max]]" or, with \a-s\a,
-      as "avg +/- sd". If \a-r\a is also specified, run time ratios
-      based on the average run times are reported (but ratio variability
+      and allows to assess runtime variability. If the repeat count is
+      > 1, runtimes are reported as "avg [min-max]]" or, with \a-s\a,
+      as "avg +/- sd". If \a-r\a is also specified, runtime ratios
+      based on the average runtimes are reported (but ratio variability
       is not provided so far).
 
    ]'
-   opstring+=$'[+TECHNICAL DETAILS?Actual run time of a given benchmark
+   opstring+=$'[+TECHNICAL DETAILS?Actual runtime of a given benchmark
       and a given shell is controlled by which shell is specified first
       as argument to the call: provisions are in place in the different
       benchmark files to use that shell as the "reference shell" for
-      which the run times should be acceptable (order of
+      which the runtimes should be acceptable (order of
       1s/benchmark/run). For example, when calling the script with args
-      "ksh mksh" run times are adjusted for ksh (which might lead to
-      excessively long run times for mksh) while when calling it with
-      args "mksh ksh" the run times are adjusted for mksh (which might
-      lead to very short run times of ksh, thus making relative
+      "ksh mksh" runtimes are adjusted for ksh (which might lead to
+      excessively long runtimes for mksh) while when calling it with
+      args "mksh ksh" the runtimes are adjusted for mksh (which might
+      lead to very short runtimes of ksh, thus making relative
       performance measurements unreliable).
    ]'
    opstring+=$'[+?The relevant information is stored in 2 exported
       variables "refshell" and "penalty" to which the subshells
       executing the benchmark do have access. The latter is the
-      estimated average run time increase of the selected reference
+      estimated average runtime increase of the selected reference
       shell relative to ksh ("the penalty" incured when using anything
       else ;)) and hardcoded in the script. The former ("refshell") can
       be used to adjust individual benchmarks independently if the
       assumed "penalty" is unsuitable for the given reference shell.
       Benchmarks are of course not obliged to honour this information at
-      all in which case the run time of the respective benchmark just
+      all in which case the runtime of the respective benchmark just
       remains independent of the order in which the shells appear in the
       call. Look at the existing benchmarks to get the idea when
       writing further benchmark files.
@@ -316,20 +333,21 @@ function setup { ## $0
    opstring+=$'[+?Regarding reliability of the timing information,
       the usual caveats apply. Ensure that the used machine is not too
       busy otherwise. Run benchmarks several times using \a-l\a to
-      assess how reproducible the measurements are. Short run times are
+      assess how reproducible the measurements are. Short runtimes are
       inherently less reliable than longer ones (i.e. exhibit larger
-      fractional uncertainty). This situation can be only partly
-      improved by using \a-l\a with an increased loop count since run
-      times are available with only 10 ms accuracy. Furthermore, for
-      very short run times the startup time of the subshell (which is of
-      the order of 10 ms) becomes non-negligible. Take home message:
-      don\'t take average run times below about 0.1-0.2 seconds too
-      serious.
+      fractional variability). This situation can be partly
+      improved by using \a-l\a with a sufficient loop count if at
+      least 3 decimal digits are used (\a-p\a). For very short runtimes
+      the startup time of the subshell (which is of the order of 10 ms)
+      becomes non-negligible and biases the measurement. Take home
+      message: don\'t take average runtimes below about 0.1-0.2 seconds
+      too serious.
 
    ]'
    opstring+="[b:bm?Select benchmarks to run.]:[benchmarks]"
    opstring+="[d:dir?Location of the benchmark files.]:[bdir:=$bdir]"
    opstring+="[l:loop?Run each benchmark so many times.]#[loop:=$loop]"
+   opstring+="[p:prec?Number of decimal digits used for timing.]#[prec:=$prec]"
    opstring+="[q:quite?Suppress progess report and associated error messages.]"
    opstring+="[r:ratio?Report timing as ratios relative to first specified shell.]"
    opstring+="[s:sd?Report variability as standard deviation rather than min-max range.]"
@@ -341,7 +359,7 @@ function setup { ## $0
 # policy at a few points...
 
 typeset fallback bdir opstring opt benchmarks report quite fd=2
-integer loop=1 useRatios=0 sdShow=0
+integer loop=1 useRatios=0 sdShow=0 prec=3
 typeset -a shells
 
 setup $0
@@ -351,6 +369,7 @@ while getopts "$opstring" opt; do
       b) benchmarks=$OPTARG;;
       d) bdir=$OPTARG;;
       l) ((loop = OPTARG > 1? OPTARG:1));;
+      p) ((prec = OPTARG > 2? OPTARG:2));;
       q) fd=3
          eval "redirect $fd> /dev/null"
       ;;
