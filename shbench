@@ -152,14 +152,7 @@ function runAll { ## $benchmarks
                   ((sdShow)) && add+="${fs}+/-${fs}$ssdv" || add+="${fs}[$smin-$smax]"
                fi
             else
-               # NOTE TO SELF: here, format is controlled by TIMEFORMAT,
-               # rather than `prec'. this is consistent only because
-               # min(prec) equals 2 which is the number of digits used
-               # in TIMEFORMAT. once the `time' builtin is fixed to
-               # really display 3 decimal digits the different
-               # handling of p=2 vs. p>2 might be reverted (see
-               # `timeShell').
-               add=${times[pos]}
+               add=$(print -f %#.${prec}f times[pos])
             fi
          else
             add=$pass
