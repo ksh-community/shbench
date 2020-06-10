@@ -239,6 +239,11 @@ function setPenalty { ## shell name
 }
 
 function setup { ## $0
+   # guarantee canonical numerical format since some benchmarks rely
+   # on the use of decimal point (thanks to - I guess - martijn
+   # dekker).
+   export LC_NUMERIC=C
+
    # some defaults
    fallback="bash ksh"
    bdir=./bench
