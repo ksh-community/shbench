@@ -346,7 +346,7 @@ function setup { ## $0
    opstring+="[d:dir?Location of the benchmark files.]:[bdir:=$bdir]"
    opstring+="[l:loop?Run each benchmark so many times.]#[loop:=$loop]"
    opstring+="[p:prec?Number of decimal digits used for timing.]#[prec:=$prec]"
-   opstring+="[q:quite?Suppress progess report and associated error messages.]"
+   opstring+="[q:quiet?Suppress progess report and associated error messages.]"
    opstring+="[r:ratio?Report timing as ratios relative to first specified shell.]"
    opstring+="[s:sd?Report variability as standard deviation rather than min-max range.]"
 
@@ -356,7 +356,7 @@ function setup { ## $0
 # note: we boldly assume adherence to a no-blanks-in-file-names
 # policy at a few points...
 
-typeset fallback bdir opstring opt benchmarks report quite fd=2
+typeset fallback bdir opstring opt benchmarks report fd=2
 integer loop=1 useRatios=0 sdShow=0 prec=3
 typeset -a shells
 
