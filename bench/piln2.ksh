@@ -11,10 +11,10 @@ function piln2 {  # loopcount report
    typeset -i i loopcount=$1 report=$2
    for ((i = 1; i <= loopcount; i ++)); do
       ((x += 1.0/(i * i)))     # -> pi^2/6, see https://en.wikipedia.org/wiki/Basel_problem
-      ((z -= 1.0**i/i))        # -> -ln(2)
+      ((z -= (-1.0)**i/i))     # -> ln(2)
    done
    pisq=$(printf "%.6f\n" $((6 * x)))
-   ln2=$(printf "%.6f\n" $((-z)))
+   ln2=$(printf "%.6f\n" $z)
    if ((report)); then
       print $pisq
       print $ln2
