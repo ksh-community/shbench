@@ -6,7 +6,7 @@ function fibslow { ## n
    # a a memory fault is triggered in ksh93u+ if `fibslow' is called
    # repeatedly with modestly large argument n. `fibslow 21' does already
    # fail at first try. the memory fault also happens quickly when calling
-   # `fibslow 20' repeatedly. ksh93v- does not have this problem.
+   # `fibslow 20' repeatedly. current ksh93u+m does no longer have this problem.
    # ---------------------------------------------------------------------
    function fib { ## n
       typeset -i n=$1

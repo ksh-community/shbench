@@ -37,10 +37,9 @@ function allgood {
       }
    done
 
-   # also do a few tests for not necessarily available tools used here
-   # and/or in the benchmark files.
-   jot 1 >/dev/null            || { print -u2 please install it and retry; return 1; }
-   print 1 | rs 1 > /dev/null  || { print -u2 please install it and retry; return 1; }
+   # also do a few tests for not necessarily available tools used here and/or in the benchmark files.
+   command -V jot >/dev/null || { print -u2 please install it and retry; return 1; }
+   command -V rs >/dev/null  || { print -u2 please install it and retry; return 1; }
 }
 
 function printBanner { ## name
@@ -229,10 +228,11 @@ function setPenalty { ## shell name
       [mksh]=16
       [bash]=16
    )
+   refshell=${shell##*/}
    # working hypothesis: shells sharing the leading `*sh' glob in
    # their name have comparable performance. so we adjust penalty
    # depending on this identifier
-   refshell=${shell/@(*sh)*/\1}
+   refshell=${refshell/@(*sh)*/\1}
    penalty=${penalties[$refshell]}
    [[ -n $penalty ]] || penalty=${penalties[ksh]}
    export refshell penalty
