@@ -11,7 +11,7 @@ function charsplit { ## strlen report
 
    [[ -n $ZSH_NAME ]] && set -o KSH_ARRAYS    # required for zsh (obviously...)
    while ((++i < strlen)); do
-      y[i]=${x: i:1}   #note: space in ${x: i:1} required for mksh
+      y[i]=${x: i:1}   #note: space in ${x: i:1} required for zsh
    done  
    (($report)) && echo ${y[*]}
 
