@@ -54,7 +54,7 @@ typeset r1 r2
 typeset -i para=19
 ((penalty > 0)) || penalty=1
 [[ $refshell == zsh ]] && ((penalty *= 3))
-typeset -i num=$((para - penalty/3))
+typeset -i num; ((num = para - penalty/3))
 r1=$(fibslow $num)
 r2=$(fibfast $num)
 [[ $r1 == "$r2" ]] || exit 1
